@@ -96,14 +96,16 @@ elif mode == "single":
 
     dashboard = dashboard_uid_get(params["url"], params["uid"])
     parsed = json.loads(dashboard)
+    parsed = parsed["dashboard"]
+    parsed['id'] = None
 
     if opts.outfile == False:
-        print(json.dumps(parsed, indent=4, sort_keys=True))
+        print(json.dumps(parsed, indent=2, sort_keys=True))
     else:
         print("Writing " + params["name"] + " to file " + opts.outfile)
         filename = opts.outfile
         f = open(filename, "w")
-        f.write(json.dumps(parsed, indent=4, sort_keys=True))
+        f.write(json.dumps(parsed, indent=2, sort_keys=True))
         f.write("\n")
         f.close()
 
@@ -120,13 +122,15 @@ elif mode == "batch":
         dash_params = extract_params(dashboard)
         dash = dashboard_uid_get(dash_params["url"], dash_params["uid"])
         parsed = json.loads(dash)
+        parsed = parsed["dashboard"]
+        parsed['id'] = None
 
         if opts.outdir == False:
-            print(json.dumps(parsed, indent=4, sort_keys=True))
+            print(json.dumps(parsed, indent=2, sort_keys=True))
         else:
             print("Writing " + dash_params["name"] + " to file " + opts.outdir + "/" + dash_params["name"] + ".json")
             filename = opts.outdir + "/" + dash_params["name"] + ".json"
             f = open(filename, "w")
-            f.write(json.dumps(parsed, indent=4, sort_keys=True))
+            f.write(json.dumps(parsed, indent=2, sort_keys=True))
             f.write("\n")
             f.close()
