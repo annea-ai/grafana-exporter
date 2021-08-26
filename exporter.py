@@ -1,27 +1,14 @@
 #!/usr/bin/env python3
-import urllib.parse
-import requests
-import json
-import time
-import os
-import sys
-import logging
 import argparse
 import browser_cookie3
+import json
+import logging
+import os
+import requests
+import sys
+import time
+import urllib.parse
 import urllib3
-
-debug = os.environ.get("CLI_DEBUG")
-if debug is True:
-    try:
-        import http.client as http_client
-    except ImportError:
-        import httplib as http_client
-    http_client.HTTPConnection.debuglevel = 1
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-    requests_log = logging.getLogger("requests.packages.urllib3")
-    requests_log.setLevel(logging.DEBUG)
-    requests_log.propagate = True
 
 def auth(url):
     temp = urllib.parse.urlsplit(url)
@@ -143,5 +130,3 @@ elif mode == "batch":
             f.write(json.dumps(parsed, indent=4, sort_keys=True))
             f.write("\n")
             f.close()
-
-
