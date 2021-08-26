@@ -83,6 +83,9 @@ if len(sys.argv)>0:
 
 if mode == '-h':
     print("=== Grafana Exporter ===\n")
+    help = open("README.md", "r")
+    print(help.read())
+    help.close()
     exit(0)
 
 elif mode == "single":
