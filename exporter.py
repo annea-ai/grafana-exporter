@@ -10,16 +10,6 @@ import argparse
 import browser_cookie3
 import urllib3
 
-class bcolors:
-    BLUE = '\033[94m'
-    CYAN = '\033[96m'
-    GREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
 debug = os.environ.get("CLI_DEBUG")
 if debug is True:
     try:
@@ -81,30 +71,6 @@ def auth(url):
 
     return auth_token
 
-def auth_test(target):
-    temp = urllib.parse.urlsplit(target)
-    browser = browser_cookie3.firefox(domain_name=temp.netloc)
-    auth_token = ""
-
-    for cookie in browser:
-        if cookie.name == "grafana_session" and cookie.domain == temp.netloc:
-            auth_token = cookie.value
-
-    headers = {'accept': 'application/json', 'content-type': 'application/json', "X-Grafana-Org-Id": "1"}
-    cookies = {'grafana_session': auth_token}
-
-    print("requests.get(" + target + ", headers=" + str(headers) + ", cookies=" + str(cookies) + ")")
-    response = requests.get(target, headers=headers, cookies=cookies)
-    print(response.content)
-    json_profile = response.json()
-
-    if response:
-        return response
-    else:
-        print(response)
-        print(json.dumps(json_profile, indent=4, sort_keys=True))
-        exit()
-
 mode = '-h'
 sys.argv.pop(0)
 if len(sys.argv)>0:
@@ -112,8 +78,6 @@ if len(sys.argv)>0:
         mode = "single"
     elif sys.argv[0] == 'batch':
         mode = "batch"
-    elif sys.argv[0] == 'test':
-        auth_test(sys.argv[1])
 
 if mode == '-h':
     print("=== Grafana Exporter ===\n")
