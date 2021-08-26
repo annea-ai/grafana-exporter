@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-
+import urllib.parse
 import requests
 import json
 import time
 import os
 import sys
 import logging
-import configparser
 import argparse
-import jwt
-import datetime
+import browser_cookie3
+import urllib3
 
 class bcolors:
     BLUE = '\033[94m'
@@ -34,32 +33,79 @@ if debug is True:
     requests_log.setLevel(logging.DEBUG)
     requests_log.propagate = True
 
-## Read config from file
-if not os.path.exists('exporter.conf'):
-    print(bcolors.FAIL + "exporter.conf does not exist. Please see README" + bcolors.ENDC)
-    raise Exception("EXPORTER_MISSING_CONFIG")
+def request(target, method="get", body={}):
+    api_key = 'Bearer ' + auth(target)
+    headers = {'Authorization': api_key, 'accept': 'application/json', 'content_type': 'application/json', "X-Grafana-Org-Id": "1"}
+    time.sleep(0.35)
+    if method == "get":
+        print("requests.get(\"https://\" + " + str(target) + ", headers=" + str(headers) + ")")
+        response = requests.get("https://" + target, headers=headers)
+        json_profile = response.json()
+    elif method == "post":
+        response = requests.post("https://" + target, headers=headers, json=body)
+        json_profile = response.json()
 
-config = configparser.ConfigParser()
-config.read("exporter.conf")
-email = config.get("auth", "email")
-password = config.get("auth", "password")
-host="https://api.warframe.market/v1/"
+    if response:
+        return response
+    else:
+        print(response)
+        print(json.dumps(json_profile, indent=4, sort_keys=True))
+        exit()
 
-### BASH EXAMPLE
-#
-#set -o errexit
-#set -o pipefail
-#
-#HOST="grafana.tools.connected.dyson.cloud"
-#FULLURL="https://<username>:<password>@$HOST"
-#
-#set -o nounset
-#
-#echo "Exporting Grafana dashboards from $HOST"
-#rm -rf dashboards
-#mkdir -p dashboards
-#for dash in $(curl -s "$FULLURL/api/search?query=&" | jq -r '.[] | select(.type == "dash-db") | .uid'); do
-#        curl -s "$FULLURL/api/dashboards/uid/$dash" | jq -r . > dashboards/${dash}.json
-#        slug=$(cat dashboards/${dash}.json | jq -r '.meta.slug')
-#        mv dashboards/${dash}.json dashboards/${dash}-${slug}.json
-#done
+def dashboard_uid_get(host, uid):
+    api_path = "/api/dashboards/uid/"
+    full_path = host + api_path + uid
+    data = request(full_path, "get")
+    print(data)
+
+def extract_params(fqdn):
+    obj = urllib.parse.urlsplit(fqdn)
+    params = {}
+
+    params["url"] = obj.netloc
+    path = obj.path.split('/')
+    path.pop(0)
+
+    if path[0] == 'd':
+        params["uid"] = path[1]
+        params["name"] = path[2]
+
+    return params
+
+def auth(url):
+    temp = urllib.parse.urlsplit(url)
+    url = temp.path.split('/')[0]
+
+    browser = browser_cookie3.firefox(domain_name=url)
+    auth_token = ""
+
+    for cookie in browser:
+        if cookie.name == "grafana_session" and cookie.domain == url:
+            auth_token = cookie.value
+
+    return auth_token
+
+mode = '-h'
+sys.argv.pop(0)
+if len(sys.argv)>0:
+    if sys.argv[0] == 'single':
+        mode = "single"
+    elif sys.argv[0] == 'batch':
+        mode = "batch"
+
+if mode == '-h':
+    print("=== Grafana Exporter ===\n")
+    exit(0)
+
+elif mode == "single":
+    fqdn=""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
+    opts = parser.parse_args()
+
+    params = extract_params(opts.fqdn)
+
+    dashboard_uid_get(params["url"], params["uid"])
+
+elif mode == "batch":
+    print("Do something")
