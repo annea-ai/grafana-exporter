@@ -34,29 +34,25 @@ if debug is True:
     requests_log.propagate = True
 
 def request(target, method="get", body={}):
-    api_key = 'Bearer ' + auth(target)
-    headers = {'Authorization': api_key, 'accept': 'application/json', 'content_type': 'application/json', "X-Grafana-Org-Id": "1"}
+    api_key = auth(target)
+    headers = {'accept': 'application/json', 'content-type': 'application/json'}
+    cookies = {'grafana_session': api_key}
     time.sleep(0.35)
     if method == "get":
-        print("requests.get(\"https://\" + " + str(target) + ", headers=" + str(headers) + ")")
-        response = requests.get("https://" + target, headers=headers)
+        response = requests.get("https://" + target, headers=headers, cookies=cookies)
         json_profile = response.json()
     elif method == "post":
-        response = requests.post("https://" + target, headers=headers, json=body)
+        response = requests.post("https://" + target, headers=headers, cookies=cookies, json=body)
         json_profile = response.json()
 
     if response:
-        return response
-    else:
-        print(response)
-        print(json.dumps(json_profile, indent=4, sort_keys=True))
-        exit()
+        return json.dumps(json_profile)
 
 def dashboard_uid_get(host, uid):
     api_path = "/api/dashboards/uid/"
     full_path = host + api_path + uid
     data = request(full_path, "get")
-    print(data)
+    return data
 
 def extract_params(fqdn):
     obj = urllib.parse.urlsplit(fqdn)
@@ -85,6 +81,30 @@ def auth(url):
 
     return auth_token
 
+def auth_test(target):
+    temp = urllib.parse.urlsplit(target)
+    browser = browser_cookie3.firefox(domain_name=temp.netloc)
+    auth_token = ""
+
+    for cookie in browser:
+        if cookie.name == "grafana_session" and cookie.domain == temp.netloc:
+            auth_token = cookie.value
+
+    headers = {'accept': 'application/json', 'content-type': 'application/json', "X-Grafana-Org-Id": "1"}
+    cookies = {'grafana_session': auth_token}
+
+    print("requests.get(" + target + ", headers=" + str(headers) + ", cookies=" + str(cookies) + ")")
+    response = requests.get(target, headers=headers, cookies=cookies)
+    print(response.content)
+    json_profile = response.json()
+
+    if response:
+        return response
+    else:
+        print(response)
+        print(json.dumps(json_profile, indent=4, sort_keys=True))
+        exit()
+
 mode = '-h'
 sys.argv.pop(0)
 if len(sys.argv)>0:
@@ -92,6 +112,8 @@ if len(sys.argv)>0:
         mode = "single"
     elif sys.argv[0] == 'batch':
         mode = "batch"
+    elif sys.argv[0] == 'test':
+        auth_test(sys.argv[1])
 
 if mode == '-h':
     print("=== Grafana Exporter ===\n")
@@ -105,7 +127,7 @@ elif mode == "single":
 
     params = extract_params(opts.fqdn)
 
-    dashboard_uid_get(params["url"], params["uid"])
+    dashboard = dashboard_uid_get(params["url"], params["uid"])
 
 elif mode == "batch":
     print("Do something")
