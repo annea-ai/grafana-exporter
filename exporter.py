@@ -20,7 +20,7 @@ def auth(url):
     for cookie in browser:
         if cookie.name == "grafana_session" and cookie.domain == url:
             auth_token = cookie.value
-
+            print("Got auth-token")
     return auth_token
 
 def request(target, method="get", body={}):
@@ -29,6 +29,7 @@ def request(target, method="get", body={}):
     cookies = {'grafana_session': api_key}
     time.sleep(0.35)
     if method == "get":
+        print("Making GET request")
         response = requests.get("https://" + target, headers=headers, cookies=cookies)
         json_profile = response.json()
     elif method == "post":
@@ -39,6 +40,7 @@ def request(target, method="get", body={}):
         return json.dumps(json_profile)
 
 def dashboard_uid_get(host, uid):
+    print("Attempting to retrieve dashboard by UID")
     api_path = "/api/dashboards/uid/"
     full_path = host + api_path + uid
     data = request(full_path, "get")
@@ -111,7 +113,6 @@ elif mode == "single":
         filename = opts.outfile
         f = open(filename, "w")
         f.write(json.dumps(parsed, indent=2, sort_keys=True))
-        f.write("\n")
         f.close()
 
 elif mode == "batch":
@@ -123,6 +124,7 @@ elif mode == "batch":
     opts = parser.parse_args()
 
     params = extract_params(opts.fqdn)
+    print(params)
     dashlist = dashboard_folder_get_list(params["url"], params["folderid"])
     for dashboard in dashlist:
         dash_params = extract_params(dashboard)
@@ -131,6 +133,7 @@ elif mode == "batch":
         parsed = parsed["dashboard"]
         if opts.setnull == True:
             parsed['id'] = None
+            parsed['uid'] = None
 
         if opts.outdir == False:
             print(json.dumps(parsed, indent=2, sort_keys=True))
@@ -139,5 +142,4 @@ elif mode == "batch":
             filename = opts.outdir + "/" + dash_params["name"] + ".json"
             f = open(filename, "w")
             f.write(json.dumps(parsed, indent=2, sort_keys=True))
-            f.write("\n")
             f.close()
