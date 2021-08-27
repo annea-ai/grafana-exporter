@@ -92,6 +92,7 @@ elif mode == "single":
     fqdn=""
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
+    parser.add_argument('-n', '--set-null', help="Set this to true if you want to create a dashboard, instead of updating an existing dashboard", action='store_true', dest="setnull", default=False)
     parser.add_argument('-o', '--outfile', help="Output to file. If this is omitted, will output to screen", action='store', dest="outfile", default=False)
     opts = parser.parse_args()
 
@@ -100,7 +101,8 @@ elif mode == "single":
     dashboard = dashboard_uid_get(params["url"], params["uid"])
     parsed = json.loads(dashboard)
     parsed = parsed["dashboard"]
-    parsed['id'] = None
+    if opts.setnull == True:
+        parsed['id'] = None
 
     if opts.outfile == False:
         print(json.dumps(parsed, indent=2, sort_keys=True))
@@ -116,6 +118,7 @@ elif mode == "batch":
     fqdn = ""
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
+    parser.add_argument('-n', '--set-null', help="Set this to true if you want to create a dashboard, instead of updating an existing dashboard", action='store_true', dest="setnull", default=False)
     parser.add_argument('-o', '--outdir', help="Output to directory/[dashboard_name]. If this is omitted, will output to screen", action='store', dest="outdir", default=False)
     opts = parser.parse_args()
 
@@ -126,7 +129,8 @@ elif mode == "batch":
         dash = dashboard_uid_get(dash_params["url"], dash_params["uid"])
         parsed = json.loads(dash)
         parsed = parsed["dashboard"]
-        parsed['id'] = None
+        if opts.setnull == True:
+            parsed['id'] = None
 
         if opts.outdir == False:
             print(json.dumps(parsed, indent=2, sort_keys=True))

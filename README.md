@@ -13,11 +13,12 @@ Optionally takes a file out option to write to file instead of stdout.
 
 ```
 $ ./exporter.py single -h
-usage: single [-h] [-f FQDN] [-o OUTFILE]
+usage: single [-h] [-f FQDN] [-n] [-o OUTFILE]
 
 optional arguments:
   -h, --help            show this help message and exit
   -f FQDN, --fqdn FQDN  full url of the dashboard
+  -n, --set-null        Set this to true if you want to create a dashboard, instead of updating an existing dashboard
   -o OUTFILE, --outfile OUTFILE
                         Output to file. If this is omitted, will output to screen
 ```
@@ -28,12 +29,12 @@ Optionally takes an outdir option to write to outdir/file instead of stdout.
 `./exporter.py batch -f [full folder url] -o [outdir]`
 
 ```
-$ ./exporter.py batch -h
-usage: batch [-h] [-f FQDN] [-o OUTDIR]
+usage: batch [-h] [-f FQDN] [-n] [-o OUTDIR]
 
 optional arguments:
   -h, --help            show this help message and exit
   -f FQDN, --fqdn FQDN  full url of the dashboard
+  -n, --set-null        Set this to true if you want to create a dashboard, instead of updating an existing dashboard
   -o OUTDIR, --outdir OUTDIR
                         Output to directory/[dashboard_name]. If this is omitted, will output to screen
 ```
