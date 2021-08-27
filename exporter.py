@@ -2,18 +2,15 @@
 import argparse
 import browser_cookie3
 import json
-import logging
-import os
 import requests
 import sys
 import time
 import urllib.parse
-import urllib3
+
 
 def auth(url):
     temp = urllib.parse.urlsplit(url)
     url = temp.path.split('/')[0]
-
     browser = browser_cookie3.firefox(domain_name=url)
     auth_token = ""
 
@@ -23,21 +20,39 @@ def auth(url):
             print("Got auth-token")
     return auth_token
 
+
 def request(target, method="get", body={}):
     api_key = auth(target)
-    headers = {'accept': 'application/json', 'content-type': 'application/json'}
-    cookies = {'grafana_session': api_key}
+    headers = {
+        'accept': 'application/json',
+        'content-type': 'application/json'
+    }
+
+    cookies = {
+        'grafana_session': api_key
+    }
+
     time.sleep(0.35)
     if method == "get":
         print("Making GET request")
-        response = requests.get("https://" + target, headers=headers, cookies=cookies)
+        response = requests.get(
+            "https://" + target,
+            headers=headers,
+            cookies=cookies
+        )
         json_profile = response.json()
     elif method == "post":
-        response = requests.post("https://" + target, headers=headers, cookies=cookies, json=body)
+        response = requests.post(
+            "https://" + target,
+            headers=headers,
+            cookies=cookies,
+            json=body
+        )
         json_profile = response.json()
 
     if response:
         return json.dumps(json_profile)
+
 
 def dashboard_uid_get(host, uid):
     print("Attempting to retrieve dashboard by UID")
@@ -46,8 +61,9 @@ def dashboard_uid_get(host, uid):
     data = request(full_path, "get")
     return data
 
+
 def dashboard_folder_get_list(host, folderid):
-    api_path = "/api/search?folderUids="+ folderid + "&query="
+    api_path = "/api/search?folderUids=" + folderid + "&query="
     full_path = host + api_path
     data = request(full_path, "get")
     parsed = json.loads(data)
@@ -57,6 +73,7 @@ def dashboard_folder_get_list(host, folderid):
         if "folderUid" in i and i["folderUid"] == folderid:
             folder_list.append("https://" + host + i["url"])
     return folder_list
+
 
 def extract_params(fqdn):
     obj = urllib.parse.urlsplit(fqdn)
@@ -75,9 +92,10 @@ def extract_params(fqdn):
 
     return params
 
+
 mode = '-h'
 sys.argv.pop(0)
-if len(sys.argv)>0:
+if len(sys.argv) > 0:
     if sys.argv[0] == 'single':
         mode = "single"
     elif sys.argv[0] == 'batch':
@@ -91,7 +109,7 @@ if mode == '-h':
     exit(0)
 
 elif mode == "single":
-    fqdn=""
+    fqdn = ""
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
     parser.add_argument('-n', '--set-null', help="Set this to true if you want to create a dashboard, instead of updating an existing dashboard", action='store_true', dest="setnull", default=False)
@@ -103,10 +121,10 @@ elif mode == "single":
     dashboard = dashboard_uid_get(params["url"], params["uid"])
     parsed = json.loads(dashboard)
     parsed = parsed["dashboard"]
-    if opts.setnull == True:
+    if opts.setnull is True:
         parsed['id'] = None
 
-    if opts.outfile == False:
+    if opts.outfile is False:
         print(json.dumps(parsed, indent=2, sort_keys=True))
     else:
         print("Writing " + params["name"] + " to file " + opts.outfile)
@@ -131,11 +149,11 @@ elif mode == "batch":
         dash = dashboard_uid_get(dash_params["url"], dash_params["uid"])
         parsed = json.loads(dash)
         parsed = parsed["dashboard"]
-        if opts.setnull == True:
+        if opts.setnull is True:
             parsed['id'] = None
             parsed['uid'] = None
 
-        if opts.outdir == False:
+        if opts.outdir is False:
             print(json.dumps(parsed, indent=2, sort_keys=True))
         else:
             print("Writing " + dash_params["name"] + " to file " + opts.outdir + "/" + dash_params["name"] + ".json")
