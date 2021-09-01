@@ -4,7 +4,6 @@ import browser_cookie3
 import json
 import requests
 import sys
-import time
 import urllib.parse
 
 
@@ -17,7 +16,6 @@ def auth(url):
     for cookie in browser:
         if cookie.name == "grafana_session" and cookie.domain == url:
             auth_token = cookie.value
-            print("Got auth-token")
     return auth_token
 
 
@@ -32,9 +30,8 @@ def request(target, method="get", body={}):
         'grafana_session': api_key
     }
 
-    time.sleep(0.35)
     if method == "get":
-        print("Making GET request")
+        print("Making GET request to https://" + target)
         response = requests.get(
             "https://" + target,
             headers=headers,
@@ -42,11 +39,22 @@ def request(target, method="get", body={}):
         )
         json_profile = response.json()
     elif method == "post":
+        print("Making POST request to https://" + target)
         response = requests.post(
             "https://" + target,
             headers=headers,
             cookies=cookies,
             json=body
+        )
+        print(response)
+        print(response.content)
+        json_profile = response.json()
+    if method == "delete":
+        print("Making DELETE request to https://" + target)
+        response = requests.delete(
+            "https://" + target,
+            headers=headers,
+            cookies=cookies
         )
         json_profile = response.json()
 
@@ -93,6 +101,27 @@ def extract_params(fqdn):
     return params
 
 
+def test_get(url, path):
+    obj = urllib.parse.urlsplit(url)
+    full_path = obj.netloc + path
+    data = request(full_path, "get")
+    return data
+
+
+def test_post(url, path, body={}):
+    obj = urllib.parse.urlsplit(url)
+    full_path = obj.netloc + path
+    data = request(full_path, "post", body)
+    return data
+
+
+def test_delete(url, path):
+    obj = urllib.parse.urlsplit(url)
+    full_path = obj.netloc + path
+    data = request(full_path, "delete")
+    return data
+
+
 mode = '-h'
 sys.argv.pop(0)
 if len(sys.argv) > 0:
@@ -100,6 +129,12 @@ if len(sys.argv) > 0:
         mode = "single"
     elif sys.argv[0] == 'batch':
         mode = "batch"
+    elif sys.argv[0] == 'get':
+        mode = "get"
+    elif sys.argv[0] == 'post':
+        mode = "post"
+    elif sys.argv[0] == 'delete':
+        mode = "delete"
 
 if mode == '-h':
     print("=== Grafana Exporter ===\n")
@@ -161,3 +196,62 @@ elif mode == "batch":
             f = open(filename, "w")
             f.write(json.dumps(parsed, indent=2, sort_keys=True))
             f.close()
+
+elif mode == "get":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--server', help="Server Address", action='store', dest="server")
+    parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
+    parser.add_argument('-f', '--file', help="File output", action='store', dest="file", default=False)
+    parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    opts = parser.parse_args()
+
+    output = test_get(opts.server, opts.path)
+
+    if opts.file is False:
+        if opts.prettyprint is True:
+            parsed = json.loads(output)
+            print(json.dumps(parsed, indent=2, sort_keys=True))
+        else:
+            print(output)
+    else:
+        filename = opts.file
+        f = open(filename, "w")
+        if opts.prettyprint is True:
+            parsed = json.loads(output)
+            f.write(json.dumps(parsed, indent=2, sort_keys=True))
+        else:
+            f.write(output)
+        f.close()
+
+elif mode == "post":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--server', help="Server Address", action='store', dest="server")
+    parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
+    parser.add_argument('-f', '--file', help="File to post as body", action='store', dest="file", required=True)
+    parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    opts = parser.parse_args()
+
+    body = json.loads(open(opts.file, "r").read())
+
+    output = test_post(opts.server, opts.path, body)
+
+    if opts.prettyprint is True:
+        parsed = json.loads(output)
+        print(json.dumps(parsed, indent=2, sort_keys=True))
+    else:
+        print(output)
+
+elif mode == "delete":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--server', help="Server Address", action='store', dest="server")
+    parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
+    parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    opts = parser.parse_args()
+
+    output = test_delete(opts.server, opts.path)
+
+    if opts.prettyprint is True:
+        parsed = json.loads(output)
+        print(json.dumps(parsed, indent=2, sort_keys=True))
+    else:
+        print(output)
