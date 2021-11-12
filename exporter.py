@@ -186,7 +186,6 @@ elif mode == "batch":
         parsed = parsed["dashboard"]
         if opts.setnull is True:
             parsed['id'] = None
-            parsed['uid'] = None
 
         if opts.outdir is False:
             print(json.dumps(parsed, indent=2, sort_keys=True))
@@ -218,6 +217,10 @@ elif mode == "get":
         f = open(filename, "w")
         if opts.prettyprint is True:
             parsed = json.loads(output)
+
+            if opts.setnull == True:
+                parsed['id'] = None
+
             f.write(json.dumps(parsed, indent=2, sort_keys=True))
         else:
             f.write(output)
