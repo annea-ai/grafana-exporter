@@ -19,7 +19,7 @@ def auth(url):
     return auth_token
 
 
-def request(target, method="get", body={}):
+def request(target, scheme, method="get", body={}):
     api_key = auth(target)
     headers = {
         'accept': 'application/json',
@@ -31,17 +31,16 @@ def request(target, method="get", body={}):
     }
 
     if method == "get":
-        print("Making GET request to https://" + target)
+        print(f"Making GET request to {scheme}://{target}")
         response = requests.get(
-            "https://" + target,
-            headers=headers,
-            cookies=cookies
+            f"{scheme}://" + target,
+            headers=headers
         )
         json_profile = response.json()
     elif method == "post":
-        print("Making POST request to https://" + target)
+        print(f"Making POST request to {scheme}://{target}")
         response = requests.post(
-            "https://" + target,
+            f"{scheme}://" + target,
             headers=headers,
             cookies=cookies,
             json=body
@@ -50,9 +49,9 @@ def request(target, method="get", body={}):
         print(response.content)
         json_profile = response.json()
     if method == "delete":
-        print("Making DELETE request to https://" + target)
+        print(f"Making DELETE request to {scheme}://{target}")
         response = requests.delete(
-            "https://" + target,
+            f"{scheme}://" + target,
             headers=headers,
             cookies=cookies
         )
@@ -62,24 +61,24 @@ def request(target, method="get", body={}):
         return json.dumps(json_profile)
 
 
-def dashboard_uid_get(host, uid):
+def dashboard_uid_get(host, scheme, uid):
     print("Attempting to retrieve dashboard by UID")
     api_path = "/api/dashboards/uid/"
     full_path = host + api_path + uid
-    data = request(full_path, "get")
+    data = request(full_path, scheme, "get")
     return data
 
 
-def dashboard_folder_get_list(host, folderid):
+def dashboard_folder_get_list(host, scheme, folderid):
     api_path = "/api/search?folderUids=" + folderid + "&query="
     full_path = host + api_path
-    data = request(full_path, "get")
+    data = request(full_path, scheme, "get")
     parsed = json.loads(data)
     folder_list = []
 
     for i in parsed:
         if "folderUid" in i and i["folderUid"] == folderid:
-            folder_list.append("https://" + host + i["url"])
+            folder_list.append(f"{scheme}://" + host + i["url"])
     return folder_list
 
 
@@ -88,6 +87,7 @@ def extract_params(fqdn):
     params = {}
 
     params["url"] = obj.netloc
+    params["scheme"] = obj.scheme
     path = obj.path.split('/')
     path.pop(0)
 
@@ -101,24 +101,24 @@ def extract_params(fqdn):
     return params
 
 
-def test_get(url, path):
+def test_get(url, scheme, path):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "get")
+    data = request(full_path, scheme, "get")
     return data
 
 
-def test_post(url, path, body={}):
+def test_post(url, scheme, path, body={}):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "post", body)
+    data = request(full_path, scheme, "post", body)
     return data
 
 
-def test_delete(url, path):
+def test_delete(url, scheme, path):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "delete")
+    data = request(full_path, scheme, "delete")
     return data
 
 
@@ -178,10 +178,10 @@ elif mode == "batch":
 
     params = extract_params(opts.fqdn)
     print(params)
-    dashlist = dashboard_folder_get_list(params["url"], params["folderid"])
+    dashlist = dashboard_folder_get_list(params["url"], params["scheme"], params["folderid"])
     for dashboard in dashlist:
         dash_params = extract_params(dashboard)
-        dash = dashboard_uid_get(dash_params["url"], dash_params["uid"])
+        dash = dashboard_uid_get(dash_params["url"], params["scheme"], dash_params["uid"])
         parsed = json.loads(dash)
         parsed = parsed["dashboard"]
         if opts.setnull is True:
@@ -204,7 +204,9 @@ elif mode == "get":
     parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
     opts = parser.parse_args()
 
-    output = test_get(opts.server, opts.path)
+    obj = urllib.parse.urlsplit(opts.server)
+    
+    output = test_get(opts.server, obj.scheme, opts.path)
 
     if opts.file is False:
         if opts.prettyprint is True:
@@ -235,8 +237,10 @@ elif mode == "post":
     opts = parser.parse_args()
 
     body = json.loads(open(opts.file, "r").read())
+    
+    obj = urllib.parse.urlsplit(opts.server)
 
-    output = test_post(opts.server, opts.path, body)
+    output = test_post(opts.server, obj.scheme, opts.path, body)
 
     if opts.prettyprint is True:
         parsed = json.loads(output)
@@ -251,7 +255,9 @@ elif mode == "delete":
     parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
     opts = parser.parse_args()
 
-    output = test_delete(opts.server, opts.path)
+    obj = urllib.parse.urlsplit(opts.server)
+
+    output = test_delete(opts.server, obj.scheme, opts.path)
 
     if opts.prettyprint is True:
         parsed = json.loads(output)
