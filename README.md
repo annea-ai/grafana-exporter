@@ -3,6 +3,8 @@ CLI util to batch export grafana dashboards, using the browser's stored grafana-
 
 To use, first log on to the grafana instance of your choosing with firefox (will implement chrome if there is really a need.)
 
+If logging into the grafana instance in firefox doesn't work, you may instead authenticate with a provided [API token](https://grafana.com/docs/grafana/latest/http_api/auth/#create-api-token).
+
 Currently has two modes. Single and Batch.
 
 ### Single
@@ -21,6 +23,8 @@ optional arguments:
   -n, --set-null        Set this to true if you want to create a dashboard, instead of updating an existing dashboard
   -o OUTFILE, --outfile OUTFILE
                         Output to file. If this is omitted, will output to screen
+  -t TOKEN, --token TOKEN
+                        Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.
 ```
 ### Batch
 This takes the url of a folder of dashboards and exports the JSON of each dashboard in the folder for import into a grafana instance.
@@ -37,4 +41,7 @@ optional arguments:
   -n, --set-null        Set this to true if you want to create a dashboard, instead of updating an existing dashboard
   -o OUTDIR, --outdir OUTDIR
                         Output to directory/[dashboard_name]. If this is omitted, will output to screen
+  -t TOKEN, --token TOKEN
+                        Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.
+
 ```

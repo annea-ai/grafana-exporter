@@ -19,67 +19,88 @@ def auth(url):
     return auth_token
 
 
-def request(target, method="get", body={}):
-    api_key = auth(target)
-    headers = {
-        'accept': 'application/json',
-        'content-type': 'application/json'
-    }
+def request(target, scheme, token=None, method="get", body={}):
+    if token:
+        headers = {
+            'accept': 'application/json',
+            'content-type': 'application/json',
+            'Authorization': f'Bearer {token}'
+        }
+        cookies = None
 
-    cookies = {
-        'grafana_session': api_key
-    }
+    else:
+        api_key = auth(target)
+        headers = {
+            'accept': 'application/json',
+            'content-type': 'application/json'
+        }
+
+        cookies = {
+            'grafana_session': api_key
+        }
 
     if method == "get":
-        print("Making GET request to https://" + target)
+        print(f"Making GET request to {scheme}://{target}")
         response = requests.get(
-            "https://" + target,
-            headers=headers,
-            cookies=cookies
+            f"{scheme}://" + target,
+            headers=headers
         )
         json_profile = response.json()
     elif method == "post":
-        print("Making POST request to https://" + target)
-        response = requests.post(
-            "https://" + target,
-            headers=headers,
-            cookies=cookies,
-            json=body
-        )
+        print(f"Making POST request to {scheme}://{target}")
+        if token:
+            response = requests.post(
+                f"{scheme}://" + target,
+                headers=headers,
+                json=body
+            )
+        else:
+            response = requests.post(
+                f"{scheme}://" + target,
+                headers=headers,
+                cookies=cookies,
+                json=body
+            )
         print(response)
         print(response.content)
         json_profile = response.json()
     if method == "delete":
-        print("Making DELETE request to https://" + target)
-        response = requests.delete(
-            "https://" + target,
-            headers=headers,
-            cookies=cookies
-        )
+        print(f"Making DELETE request to {scheme}://{target}")
+        if token:
+            response = requests.delete(
+                f"{scheme}://" + target,
+                headers=headers
+            )
+        else:
+            response = requests.delete(
+                f"{scheme}://" + target,
+                headers=headers,
+                cookies=cookies
+            )
         json_profile = response.json()
 
     if response:
         return json.dumps(json_profile)
 
 
-def dashboard_uid_get(host, uid):
+def dashboard_uid_get(host, scheme, token, uid):
     print("Attempting to retrieve dashboard by UID")
     api_path = "/api/dashboards/uid/"
     full_path = host + api_path + uid
-    data = request(full_path, "get")
+    data = request(full_path, scheme, token, "get")
     return data
 
 
-def dashboard_folder_get_list(host, folderid):
+def dashboard_folder_get_list(host, scheme, token, folderid):
     api_path = "/api/search?folderUids=" + folderid + "&query="
     full_path = host + api_path
-    data = request(full_path, "get")
+    data = request(full_path, scheme, token, "get")
     parsed = json.loads(data)
     folder_list = []
 
     for i in parsed:
         if "folderUid" in i and i["folderUid"] == folderid:
-            folder_list.append("https://" + host + i["url"])
+            folder_list.append(f"{scheme}://" + host + i["url"])
     return folder_list
 
 
@@ -88,6 +109,7 @@ def extract_params(fqdn):
     params = {}
 
     params["url"] = obj.netloc
+    params["scheme"] = obj.scheme
     path = obj.path.split('/')
     path.pop(0)
 
@@ -101,24 +123,24 @@ def extract_params(fqdn):
     return params
 
 
-def test_get(url, path):
+def test_get(url, scheme, token, path):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "get")
+    data = request(full_path, scheme, token, "get")
     return data
 
 
-def test_post(url, path, body={}):
+def test_post(url, scheme, token, path, body={}):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "post", body)
+    data = request(full_path, scheme, token, "post", body)
     return data
 
 
-def test_delete(url, path):
+def test_delete(url, scheme, token, path):
     obj = urllib.parse.urlsplit(url)
     full_path = obj.netloc + path
-    data = request(full_path, "delete")
+    data = request(full_path, scheme, token, "delete")
     return data
 
 
@@ -149,11 +171,12 @@ elif mode == "single":
     parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
     parser.add_argument('-n', '--set-null', help="Set this to true if you want to create a dashboard, instead of updating an existing dashboard", action='store_true', dest="setnull", default=False)
     parser.add_argument('-o', '--outfile', help="Output to file. If this is omitted, will output to screen", action='store', dest="outfile", default=False)
+    parser.add_argument('-t', '--token', help="Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.", action='store', dest="token", default=None)
     opts = parser.parse_args()
 
     params = extract_params(opts.fqdn)
 
-    dashboard = dashboard_uid_get(params["url"], params["uid"])
+    dashboard = dashboard_uid_get(params["url"], params["scheme"], opts.token, params["uid"])
     parsed = json.loads(dashboard)
     parsed = parsed["dashboard"]
     if opts.setnull is True:
@@ -174,14 +197,15 @@ elif mode == "batch":
     parser.add_argument('-f', '--fqdn', help="full url of the dashboard", action='store', dest="fqdn")
     parser.add_argument('-n', '--set-null', help="Set this to true if you want to create a dashboard, instead of updating an existing dashboard", action='store_true', dest="setnull", default=False)
     parser.add_argument('-o', '--outdir', help="Output to directory/[dashboard_name]. If this is omitted, will output to screen", action='store', dest="outdir", default=False)
+    parser.add_argument('-t', '--token', help="Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.", action='store', dest="token", default=None)
     opts = parser.parse_args()
 
     params = extract_params(opts.fqdn)
     print(params)
-    dashlist = dashboard_folder_get_list(params["url"], params["folderid"])
+    dashlist = dashboard_folder_get_list(params["url"], params["scheme"], opts.token, params["folderid"])
     for dashboard in dashlist:
         dash_params = extract_params(dashboard)
-        dash = dashboard_uid_get(dash_params["url"], dash_params["uid"])
+        dash = dashboard_uid_get(dash_params["url"], params["scheme"], opts.token, dash_params["uid"])
         parsed = json.loads(dash)
         parsed = parsed["dashboard"]
         if opts.setnull is True:
@@ -202,9 +226,12 @@ elif mode == "get":
     parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
     parser.add_argument('-f', '--file', help="File output", action='store', dest="file", default=False)
     parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    parser.add_argument('-t', '--token', help="Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.", action='store', dest="token", default=None)
     opts = parser.parse_args()
 
-    output = test_get(opts.server, opts.path)
+    obj = urllib.parse.urlsplit(opts.server)
+
+    output = test_get(opts.server, obj.scheme, opts.token, opts.path)
 
     if opts.file is False:
         if opts.prettyprint is True:
@@ -232,11 +259,14 @@ elif mode == "post":
     parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
     parser.add_argument('-f', '--file', help="File to post as body", action='store', dest="file", required=True)
     parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    parser.add_argument('-t', '--token', help="Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.", action='store', dest="token", default=None)
     opts = parser.parse_args()
 
     body = json.loads(open(opts.file, "r").read())
 
-    output = test_post(opts.server, opts.path, body)
+    obj = urllib.parse.urlsplit(opts.server)
+
+    output = test_post(opts.server, obj.scheme, opts.token, opts.path, body)
 
     if opts.prettyprint is True:
         parsed = json.loads(output)
@@ -249,9 +279,12 @@ elif mode == "delete":
     parser.add_argument('-s', '--server', help="Server Address", action='store', dest="server")
     parser.add_argument('-p', '--path', help="API Path", action='store', dest="path")
     parser.add_argument('-j', '--pretty-json', help="Print output in pretty JSON", action='store_true', dest="prettyprint", default=False)
+    parser.add_argument('-t', '--token', help="Grafana API token. If this is omitted, will try to use grafana-session cookie for authentication.", action='store', dest="token", default=None)
     opts = parser.parse_args()
 
-    output = test_delete(opts.server, opts.path)
+    obj = urllib.parse.urlsplit(opts.server)
+
+    output = test_delete(opts.server, obj.scheme, opts.token, opts.path)
 
     if opts.prettyprint is True:
         parsed = json.loads(output)
